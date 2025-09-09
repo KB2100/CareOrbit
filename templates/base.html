@@ -8,6 +8,25 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
 <body class="bg-gray-50 min-h-screen">
+
+    
+    <!-- 🔹 Flash message block -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="container mx-auto mt-3 px-4">
+          {% for category, msg in messages %}
+            <div class="p-3 mb-3 rounded-lg shadow 
+                        {% if category=='success' %} bg-green-500 text-white 
+                        {% elif category=='danger' %} bg-red-500 text-white 
+                        {% elif category=='warning' %} bg-yellow-400 text-black 
+                        {% else %} bg-blue-500 text-white {% endif %}">
+              {{ msg }}
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+    <!-- 🔹 End Flash messages -->
     {% block content %}{% endblock %}
     
     <script>

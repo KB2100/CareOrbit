@@ -1,0 +1,45 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Send SMS</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body style="font-family: system-ui, Arial, sans-serif; max-width: 680px; margin: 2rem auto;">
+  <h2>Send Appointment SMS</h2>
+
+  <!-- flash messages -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div>
+        {% for category, msg in messages %}
+          <div>
+            <strong>{{ category|title }}:</strong> {{ msg }}
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <form method="POST" action="{{ url_for('send_sms') }}" style="margin-top:1rem;">
+    <label>To Number (E.164 e.g. +9198XXXXXXXX)</label><br>
+    <input name="to_number" required style="width:100%; padding:.6rem;"><br><br>
+
+    <label>Patient Name (optional)</label><br>
+    <input name="patient_name" style="width:100%; padding:.6rem;"><br><br>
+
+    <label>Doctor Name (optional)</label><br>
+    <input name="doctor_name" style="width:100%; padding:.6rem;"><br><br>
+
+
+    <label>Queue No.</label><br>
+    <input name="queue_no" required style="width:100%; padding:.6rem;"><br><br>
+
+    <label>Time (optional)</label><br>
+    <input name="appt_time" style="width:100%; padding:.6rem;"><br><br>
+
+    <button type="submit" style="padding:.6rem 1rem;">Send SMS</button>
+    <a href="{{ url_for('admin_dashboard') }}" style="margin-left:.5rem;">Back</a>
+  </form>
+</body>
+</html>

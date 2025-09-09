@@ -1,3 +1,5 @@
+from dotenv import load_dotenv
+load_dotenv()  # loads .env before the app uses the variables
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash, make_response, send_file
 from flask_pymongo import PyMongo
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
@@ -11,10 +13,51 @@ import logging
 import re
 import base64
 import mimetypes
+import sys, os
+PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+if PROJECT_ROOT not in sys.path:
+    sys.path.append(PROJECT_ROOT)
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key-change-this-in-production'
 app.config["MONGO_URI"] = "mongodb://localhost:27017/careorbit_db"
+
+from flask import request, redirect, url_for, flash, render_template
+from flask_login import login_required, current_user
+from app.utils.sms import send_appointment_sms
+
+@app.route("/admin/send-sms", methods=["GET", "POST"])
+@login_required
+def send_sms():
+    if request.method == "POST":
+        to_number    = request.form.get("to_number", "").strip()
+        patient_name = request.form.get("patient_name", "").strip()
+        queue_no     = request.form.get("queue_no", "").strip()
+        doctor_name  = getattr(current_user, "full_name", "Doctor")
+        appt_time    = request.form.get("appt_time", "").strip() or None
+
+        if not (to_number and queue_no):
+            flash("⚠️ Please enter at least mobile number and queue no.", "warning")
+            return redirect(url_for("send_sms"))
+
+        try:
+            sid = send_appointment_sms(
+                to_number=to_number,
+                patient_name=patient_name,
+                doctor_name=doctor_name,
+                queue_no=queue_no,
+                appt_time=appt_time
+            )
+            flash(f"✅ SMS sent successfully (SID: {sid})", "success")
+        except Exception as e:
+            flash(f"❌ SMS failed: {e}", "danger")
+
+        return redirect(url_for("send_sms"))
+
+    # GET request → show form
+    return render_template("admin/send_sms.html", default_doc=getattr(current_user, "full_name", "Doctor"))
+
+
 
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 app.config['UPLOAD_FOLDER'] = 'uploads/test_results'
@@ -3112,4 +3155,4 @@ def update_doctor_profile():
 # The first instance at line 1113 is kept as it uses user_id which is more reliable
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, port=9090)

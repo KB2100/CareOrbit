@@ -20,6 +20,11 @@
                     <a href="/admin/patients" class="text-blue-600 hover:text-blue-800 font-medium">
                         <i class="fas fa-users mr-2"></i>Manage Patients
                     </a>
+                    <!-- Send SMS Button -->
+                    <a href="{{ url_for('send_sms') }}" 
+                       class="bg-blue-500 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-600">
+                       📩 Send SMS
+                    </a>
                     <span class="text-sm text-gray-600">Welcome, Admin</span>
                     <button onclick="logout()" class="logout-btn bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors">
                         <i class="fas fa-sign-out-alt mr-2"></i>Logout
