@@ -33,6 +33,7 @@
             </div>
         </div>
     </header>
+    
 
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <!-- Patient Search/Login Section -->
@@ -180,7 +181,115 @@
         </div>
     </div>
 </div>
+
+    <!-- Calendar Section -->
+    <section class="py-8">
+        <h2 class="text-xl font-bold text-gray-800 text-center mb-4">Doctor Slots Calendar</h2>
+        <div id="calendar" class="max-w-4xl mx-auto bg-white rounded-lg shadow p-4"></div>
+    </section>
+
+    <!-- FullCalendar Script -->
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+    <script>
+      document.addEventListener("DOMContentLoaded", function() {
+        var calendarEl = document.getElementById("calendar");
+
+        var calendar = new FullCalendar.Calendar(calendarEl, {
+          initialView: "dayGridMonth",
+          editable: true,
+          selectable: true,
+          eventResizableFromStart: true,
+
+          events: async function(fetchInfo, successCallback, failureCallback) {
+            try {
+              let response = await fetch("/api/slots");
+              let data = await response.json();
+
+              let formattedEvents = data.map(slot => ({
+                id: slot.id,
+                title: slot.title,
+                start: slot.start,
+                end: slot.end,
+                className: slot.title === "OPD" ? "fc-event-opd" : "fc-event-ipd"
+              }));
+
+              successCallback(formattedEvents);
+            } catch (err) {
+              failureCallback(err);
+            }
+          },
+
+          select: async function(info) {
+            let title = prompt("Enter Slot Type (OPD/IPD):");
+            if (title) {
+              let newSlot = {
+                doctor_id: "{{ doctor_info._id if doctor_info else '123' }}",
+                title: title,
+                start: info.startStr,
+                end: info.endStr
+              };
+
+              let response = await fetch("/api/slots", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(newSlot)
+              });
+
+              let result = await response.json();
+              if (response.ok) {
+                calendar.addEvent({
+                  id: result.id,
+                  title: newSlot.title,
+                  start: newSlot.start,
+                  end: newSlot.end,
+                  className: newSlot.title === "OPD" ? "fc-event-opd" : "fc-event-ipd"
+                });
+              } else {
+                alert("Failed to add slot");
+              }
+            }
+          },
+
+          eventDrop: async function(info) { await updateSlot(info.event); },
+          eventResize: async function(info) { await updateSlot(info.event); },
+
+          eventClick: async function(info) {
+            if (confirm("Delete this slot?")) {
+              let response = await fetch(`/api/slots/${info.event.id}`, {
+                method: "DELETE"
+              });
+              if (response.ok) {
+                info.event.remove();
+              } else {
+                alert("Failed to delete slot");
+              }
+            }
+          }
+        });
+
+        calendar.render();
+
+        async function updateSlot(event) {
+          let updatedSlot = {
+            title: event.title,
+            start: event.start.toISOString(),
+            end: event.end.toISOString()
+          };
+
+          let response = await fetch(`/api/slots/${event.id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(updatedSlot)
+          });
+
+          if (!response.ok) {
+            alert("Failed to update slot");
+          }
+        }
+      });
+    </script>
 {% endblock %}
+
 
 {% block scripts %}
 <script>

@@ -57,6 +57,78 @@ def send_sms():
     # GET request → show form
     return render_template("admin/send_sms.html", default_doc=getattr(current_user, "full_name", "Doctor"))
 
+# backend/app.py
+from flask import Flask, jsonify, request, render_template
+# from flask_cors import CORS
+# from pymongo import MongoClient
+
+# app = Flask(__name__)
+# CORS(app)  # Allow frontend calls
+
+# # ✅ Connect to MongoDB
+# client = MongoClient("mongodb://localhost:27017/")
+# db = client["careorbit_db"]   # your DB name
+# slots_collection = db["slots"]
+
+# ------------------- API ROUTES -------------------
+
+@app.route("/api/slots", methods=["GET"])
+def get_slots():
+    slots = []
+    for slot in mongo.db.slots.find():
+        slots.append({
+            "id": str(slot["_id"]),
+            "title": slot.get("title", "Slot"),
+            "start": slot["start"],
+            "end": slot["end"],
+            "doctor_id": slot["doctor_id"]
+        })
+    return jsonify(slots)
+
+
+
+@app.route("/api/slots", methods=["POST"])
+def add_slot():
+    data = request.json
+    new_slot = {
+        "doctor_id": data["doctor_id"],
+        "title": data["title"],  # OPD / IPD
+        "start": data["start"],
+        "end": data["end"]
+    }
+    result = mongo.db.slots.insert_one(new_slot)
+    return jsonify({"message": "Slot added", "id": str(result.inserted_id)}), 201
+
+from bson.objectid import ObjectId
+
+@app.route("/api/slots/<slot_id>", methods=["PUT"])
+def update_slot(slot_id):
+    data = request.json
+    mongo.db.slots.update_one(
+        {"_id": ObjectId(slot_id)},
+        {"$set": {
+            "title": data["title"],
+            "start": data["start"],
+            "end": data["end"]
+        }}
+    )
+    return jsonify({"message": "Slot updated"}), 200
+
+
+@app.route("/api/slots/<slot_id>", methods=["DELETE"])
+def delete_slot(slot_id):
+    mongo.db.slots.delete_one({"_id": ObjectId(slot_id)})
+    return jsonify({"message": "Slot deleted"}), 200
+
+
+
+# ------------------- PAGES -------------------
+
+@app.route("/calendar")
+def calendar_page():
+    # doctor_dashboard.html must be inside "templates" folder
+    return render_template("doctor_dashboard.html")
+
 
 
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size

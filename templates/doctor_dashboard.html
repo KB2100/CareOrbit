@@ -9,18 +9,20 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center py-4">
                 <div class="flex items-center">
-                    <!-- Added circular profile button at top left next to Doctor Dashboard text -->
+                    <!-- Profile button -->
                     <button onclick="window.location.href='/doctor/profile'" 
                             class="flex items-center justify-center w-10 h-10 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors mr-4 shadow-sm">
                         <i class="fas fa-user-md text-sm"></i>
                     </button>
                     <div>
                         <h1 class="text-2xl font-bold text-gray-900">Doctor Dashboard</h1>
-                        <p class="text-gray-600">Welcome, {{ doctor_info.name if doctor_info else session.username }} - {{ doctor_info.department if doctor_info else 'Department' }}</p>
+                        <p class="text-gray-600">
+                            Welcome, {{ doctor_info.name if doctor_info else session.username }} -
+                            {{ doctor_info.department if doctor_info else 'Department' }}
+                        </p>
                     </div>
                 </div>
                 <div class="flex items-center space-x-4">
-                    <!-- Removed the old profile button from right side -->
                     <button onclick="showPastPatients()" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700">
                         <i class="fas fa-history mr-2"></i>Past Patients
                     </button>
@@ -32,9 +34,10 @@
         </div>
     </header>
 
-    <!-- Main Content -->
+ 
+
+    <!-- Stats Cards -->
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <!-- Stats Cards -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
             <div class="bg-white rounded-lg shadow p-6">
                 <div class="flex items-center">
@@ -47,6 +50,12 @@
                     </div>
                 </div>
             </div>
+        </div>
+    </main>
+</div>
+
+
+
             <div class="bg-white rounded-lg shadow p-6">
                 <div class="flex items-center">
                     <div class="p-3 rounded-full bg-green-100 text-green-600">
@@ -81,6 +90,8 @@
                 </div>
             </div>
         </div>
+
+
 
         <!-- Patients Table -->
         <div class="bg-white rounded-lg shadow">
@@ -287,6 +298,115 @@
     </div>
 </div>
 
+    <!-- Calendar Section -->
+    <section class="py-8">
+        <h2 class="text-xl font-bold text-gray-800 text-center mb-4">Doctor Slots Calendar</h2>
+        <div id="calendar" class="max-w-4xl mx-auto bg-white rounded-lg shadow p-4"></div>
+    </section>
+
+    <!-- FullCalendar Script -->
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+    <script>
+      document.addEventListener("DOMContentLoaded", function() {
+        var calendarEl = document.getElementById("calendar");
+
+        var calendar = new FullCalendar.Calendar(calendarEl, {
+          initialView: "dayGridMonth",
+          editable: true,
+          selectable: true,
+          eventResizableFromStart: true,
+
+          events: async function(fetchInfo, successCallback, failureCallback) {
+            try {
+              let response = await fetch("/api/slots");
+              let data = await response.json();
+
+              let formattedEvents = data.map(slot => ({
+                id: slot.id,
+                title: slot.title,
+                start: slot.start,
+                end: slot.end,
+                className: slot.title === "OPD" ? "fc-event-opd" : "fc-event-ipd"
+              }));
+
+              successCallback(formattedEvents);
+            } catch (err) {
+              failureCallback(err);
+            }
+          },
+
+          select: async function(info) {
+            let title = prompt("Enter Slot Type (OPD/IPD):");
+            if (title) {
+              let newSlot = {
+                doctor_id: "{{ doctor_info._id if doctor_info else '123' }}",
+                title: title,
+                start: info.startStr,
+                end: info.endStr
+              };
+
+              let response = await fetch("/api/slots", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(newSlot)
+              });
+
+              let result = await response.json();
+              if (response.ok) {
+                calendar.addEvent({
+                  id: result.id,
+                  title: newSlot.title,
+                  start: newSlot.start,
+                  end: newSlot.end,
+                  className: newSlot.title === "OPD" ? "fc-event-opd" : "fc-event-ipd"
+                });
+              } else {
+                alert("Failed to add slot");
+              }
+            }
+          },
+
+          eventDrop: async function(info) { await updateSlot(info.event); },
+          eventResize: async function(info) { await updateSlot(info.event); },
+
+          eventClick: async function(info) {
+            if (confirm("Delete this slot?")) {
+              let response = await fetch(`/api/slots/${info.event.id}`, {
+                method: "DELETE"
+              });
+              if (response.ok) {
+                info.event.remove();
+              } else {
+                alert("Failed to delete slot");
+              }
+            }
+          }
+        });
+
+        calendar.render();
+
+        async function updateSlot(event) {
+          let updatedSlot = {
+            title: event.title,
+            start: event.start.toISOString(),
+            end: event.end.toISOString()
+          };
+
+          let response = await fetch(`/api/slots/${event.id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(updatedSlot)
+          });
+
+          if (!response.ok) {
+            alert("Failed to update slot");
+          }
+        }
+      });
+    </script>
+
+
+
 <!-- Enhanced Patient History Modal with comprehensive patient data -->
 <!-- Patient History Modal -->
 <div id="patientHistoryModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
@@ -317,6 +437,115 @@
                         </div>
                     </div>
                 </div>
+
+                    <!-- Calendar Section -->
+    <section class="py-8">
+        <h2 class="text-xl font-bold text-gray-800 text-center mb-4">Doctor Slots Calendar</h2>
+        <div id="calendar" class="max-w-4xl mx-auto bg-white rounded-lg shadow p-4"></div>
+    </section>
+
+    <!-- FullCalendar Script -->
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+    <script>
+      document.addEventListener("DOMContentLoaded", function() {
+        var calendarEl = document.getElementById("calendar");
+
+        var calendar = new FullCalendar.Calendar(calendarEl, {
+          initialView: "dayGridMonth",
+          editable: true,
+          selectable: true,
+          eventResizableFromStart: true,
+
+          events: async function(fetchInfo, successCallback, failureCallback) {
+            try {
+              let response = await fetch("/api/slots");
+              let data = await response.json();
+
+              let formattedEvents = data.map(slot => ({
+                id: slot.id,
+                title: slot.title,
+                start: slot.start,
+                end: slot.end,
+                className: slot.title === "OPD" ? "fc-event-opd" : "fc-event-ipd"
+              }));
+
+              successCallback(formattedEvents);
+            } catch (err) {
+              failureCallback(err);
+            }
+          },
+
+          select: async function(info) {
+            let title = prompt("Enter Slot Type (OPD/IPD):");
+            if (title) {
+              let newSlot = {
+                doctor_id: "{{ doctor_info._id if doctor_info else '123' }}",
+                title: title,
+                start: info.startStr,
+                end: info.endStr
+              };
+
+              let response = await fetch("/api/slots", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(newSlot)
+              });
+
+              let result = await response.json();
+              if (response.ok) {
+                calendar.addEvent({
+                  id: result.id,
+                  title: newSlot.title,
+                  start: newSlot.start,
+                  end: newSlot.end,
+                  className: newSlot.title === "OPD" ? "fc-event-opd" : "fc-event-ipd"
+                });
+              } else {
+                alert("Failed to add slot");
+              }
+            }
+          },
+
+          eventDrop: async function(info) { await updateSlot(info.event); },
+          eventResize: async function(info) { await updateSlot(info.event); },
+
+          eventClick: async function(info) {
+            if (confirm("Delete this slot?")) {
+              let response = await fetch(`/api/slots/${info.event.id}`, {
+                method: "DELETE"
+              });
+              if (response.ok) {
+                info.event.remove();
+              } else {
+                alert("Failed to delete slot");
+              }
+            }
+          }
+        });
+
+        calendar.render();
+
+        async function updateSlot(event) {
+          let updatedSlot = {
+            title: event.title,
+            start: event.start.toISOString(),
+            end: event.end.toISOString()
+          };
+
+          let response = await fetch(`/api/slots/${event.id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(updatedSlot)
+          });
+
+          if (!response.ok) {
+            alert("Failed to update slot");
+          }
+        }
+      });
+    </script>
+
+
 
                 <!-- Filter and Search -->
                 <div class="flex flex-wrap gap-4 mb-6">
@@ -372,9 +601,11 @@
         </div>
     </div>
 </div>
-{% endblock %}
+<!-- // {% endblock %} -->
 
-{% block scripts %}
+
+
+<!-- {% block scripts %} -->
 <script>
 // Global variables
 var testTypes = [];
@@ -1182,4 +1413,5 @@ function removeTestFromList(index) {
     transform: translateX(2rem);
 }
 </style>
+
 {% endblock %}
